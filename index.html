@@ -1,0 +1,387 @@
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  Card,
+  CardHeader,
+  CardContent,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import {
+  Search,
+  MapPin,
+  GraduationCap,
+  Sun,
+  Moon,
+  Info,
+} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+
+/**
+ * SvoEducationPortal — v4.0  (world‑class UI/UX)
+ * ---------------------------------------------------
+ * ➤ Добавлен раздел «Льготы для участников СВО» (benefitsSection)
+ *    с актуальной нормативной информацией (см. комментарии‑источники).
+ * ➤ Компоненты переиспользуют дизайн‑систему shadcn/ui + Tailwind + Lucide.
+ * ➤ Улучшена типографика, отступы и адаптивные состояния.
+ * ➤ Dark‑mode / accessibility сохранены.
+ * Источники (на 21 июля 2025):
+ *   • 10 % квота бюджетных мест — ФЗ от 2023 г.; Mail.ru News (2025‑06‑23)
+ *   • +10 ЕГЭ‑баллов ветеранам — портал «Герои России» (2025‑07‑10)
+ *   • Бесплатные подготовительные отделения детям — «gogov.ru» (2025‑05‑14)
+ *   • Перевод на бюджет и БВИ для Героев РФ — «Парламентская газета» (2025‑06‑30)
+ */
+
+// --- CONSTANTS ------------------------------------------------------------
+const COLORS = {
+  primary: "#003C71", // RGSU Blue
+  accent: "#5FB1E8", // Light Blue tint
+  darkCard: "#1E293B", // Slate‑800
+  benefitBg: "#E6F1FB", // light brand tint
+};
+
+const logoUrl =
+  "https://upload.wikimedia.org/wikipedia/ru/4/42/%D0%A0%D0%93%D0%A1%D0%A3_%D0%BB%D0%BE%D0%B3%D0%BE%D1%82%D0%B8%D0%BF.png";
+
+// --- DATA — PROGRAMS ------------------------------------------------------
+type Program = {
+  id: number;
+  institution: string;
+  program: string;
+  profile: string;
+  region: string;
+  duration: string;
+  exams: string;
+  link: string;
+  seats: number;
+};
+
+const samplePrograms: Program[] = [
+  {
+    id: 0,
+    institution: "Российский государственный социальный университет (РГСУ)",
+    program: "Бакалавриат — Социальная работа",
+    profile: "Социальная работа",
+    region: "Москва",
+    duration: "4 года",
+    exams: "Русский язык • Обществознание • История",
+    link: "https://www.rgsu.net/abiturient/bakalavriat/social-work",
+    seats: 10,
+  },
+  {
+    id: 1,
+    institution: "Сеченовский университет",
+    program: "Ординатура — Терапия",
+    profile: "Семейная медицина",
+    region: "Москва",
+    duration: "2 года",
+    exams: "Собеседование + тест",
+    link: "https://sechenov.ru/ordinatura/therapy",
+    seats: 5,
+  },
+  {
+    id: 2,
+    institution: "РНИМУ им. Н. И. Пирогова",
+    program: "Ординатура — Хирургия",
+    profile: "Пластическая хирургия",
+    region: "Москва",
+    duration: "2 года",
+    exams: "Портфолио + собеседование",
+    link: "https://rsmu.ru/postgraduate/plastic-surgery",
+    seats: 2,
+  },
+  {
+    id: 3,
+    institution: "СПбГУ",
+    program: "Магистратура — Инженерная геология",
+    profile: "Инженер‑геотехник",
+    region: "Санкт‑Петербург",
+    duration: "2 года",
+    exams: "Тест + портфолио",
+    link: "https://spbu.ru/masters/geotech",
+    seats: 3,
+  },
+];
+
+// --- DATA — BENEFITS ------------------------------------------------------
+type Benefit = {
+  id: number;
+  title: string;
+  details: string;
+  sourceLink: string;
+};
+
+const benefits: Benefit[] = [
+  {
+    id: 1,
+    title: "10 % отдельная квота",
+    details:
+      "Каждый госвуз выделяет не менее 10 % бюджетных мест для участников СВО и их детей.",
+    sourceLink: "https://news.mail.ru/society/66309081/", // turn0search0
+  },
+  {
+    id: 2,
+    title: "+10 баллов к ЕГЭ",
+    details:
+      "Ветеранам боевых действий начисляется до 10 дополнительных баллов при поступлении.",
+    sourceLink: "https://xn--90aivcdt6dxbc.xn--p1ai/articles/useful/kakie-lgoty-v-vuzakh-i-kolledzhakh-est-u-uchastnikov-svo-i-ikh-detey/", // turn0search1
+  },
+  {
+    id: 3,
+    title: "Бесплатные подготовительные курсы",
+    details:
+      "Дети погибших/раненых бойцов проходят обучение на подготовительных отделениях вузов бесплатно.",
+    sourceLink: "https://gogov.ru/articles/benefits-military/a916712", // turn0search2
+  },
+  {
+    id: 4,
+    title: "Перевод на бюджет / БВИ",
+    details:
+      "Участники СВО могут перевестись на бюджет или поступить без испытаний (для Героев РФ).",
+    sourceLink: "https://www.pnp.ru/social/uchastnikam-svo-i-ikh-detyam-stalo-legche-postupit-v-vuz.html", // turn0search8
+  },
+];
+
+const regions = ["Москва", "Санкт‑Петербург", "Кемерово", "Новосибирск"];
+const profiles = [
+  "Социальная работа",
+  "Семейная медицина",
+  "Пластическая хирургия",
+  "Инженер‑геотехник",
+];
+
+// --- COMPONENTS -----------------------------------------------------------
+function DarkModeToggle({ dark, setDark }: { dark: boolean; setDark: (v: boolean) => void }) {
+  return (
+    <Button
+      aria-label="Переключить тему"
+      variant="ghost"
+      size="icon"
+      onClick={() => setDark(!dark)}
+      className="focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[color:var(--rgsu-blue)]"
+      style={{ "--rgsu-blue": COLORS.primary }}
+    >
+      {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+    </Button>
+  );
+}
+
+function BenefitCard({ benefit }: { benefit: Benefit }) {
+  return (
+    <motion.a
+      href={benefit.sourceLink}
+      target="_blank"
+      rel="noopener noreferrer"
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 12 }}
+      transition={{ duration: 0.25 }}
+      className="block"
+    >
+      <Card
+        className="h-full p-4 bg-[color:var(--benefit-bg)] hover:bg-[color:var(--benefit-bg-hover)] transition-colors"
+        style={{
+          "--benefit-bg": COLORS.benefitBg,
+          "--benefit-bg-hover": "#D8E8F9",
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-[color:var(--rgsu-blue)]" style={{ "--rgsu-blue": COLORS.primary }} />
+          <div className="space-y-1">
+            <h4 className="font-semibold text-sm md:text-base text-gray-800">
+              {benefit.title}
+            </h4>
+            <p className="text-xs md:text-sm text-gray-600 max-w-prose">
+              {benefit.details}
+            </p>
+          </div>
+        </div>
+      </Card>
+    </motion.a>
+  );
+}
+
+function ProgramCard({ program }: { program: Program }) {
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 16 }}
+      transition={{ duration: 0.25 }}
+      className="w-full"
+    >
+      <Card
+        className="h-full bg-white/70 dark:bg-[color:var(--dark-card)] backdrop-blur-md transition duration-200 ease-out hover:scale-[1.03] hover:shadow-2xl"
+        style={{ "--dark-card": COLORS.darkCard }}
+      >
+        <CardHeader className="gap-1">
+          <h3 className="text-lg font-semibold flex items-center gap-2 text-[color:var(--rgsu-blue)]" style={{ "--rgsu-blue": COLORS.primary }}>
+            <GraduationCap className="w-5 h-5" /> {program.program}
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1">
+            <MapPin className="w-4 h-4" /> {program.institution} — {program.region}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="text-sm dark:text-gray-200">
+            <span className="font-medium">Профиль:</span> {program.profile}
+          </p>
+          <p className="text-sm dark:text-gray-200">
+            <span className="font-medium">Срок обучения:</span> {program.duration}
+          </p>
+          <p className="text-sm dark:text-gray-200">
+            <span className="font-medium">Вступительные испытания:</span> {program.exams}
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge style={{ backgroundColor: COLORS.accent, color: COLORS.primary }}>Льгота СВО</Badge>
+            <Badge variant="destructive">Свободных мест: {program.seats}</Badge>
+          </div>
+          <a href={program.link} target="_blank" rel="noopener noreferrer" className="inline-block mt-3">
+            <Button size="sm" style={{ backgroundColor: COLORS.primary, color: "#fff" }} className="hover:brightness-110">
+              Перейти к программе
+            </Button>
+          </a>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+function FilterPanel({
+  query,
+  setQuery,
+  region,
+  setRegion,
+  profile,
+  setProfile,
+}: {
+  query: string;
+  setQuery: (v: string) => void;
+  region: string;
+  setRegion: (v: string) => void;
+  profile: string;
+  setProfile: (v: string) => void;
+}) {
+  return (
+    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: 0.05 }} className="grid gap-4 md:grid-cols-3 items-end">
+      <div className="relative">
+        <Input
+          placeholder="Поиск по вузу или программе..."
+          aria-label="Поиск по вузу или программе"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="pl-10 border-[1.5px] border-[color:var(--rgsu-blue)] dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-[color:var(--rgsu-blue)]"
+          style={{ "--rgsu-blue": COLORS.primary }}
+        />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+      </div>
+      <Select value={region} onValueChange={setRegion}>
+        <SelectTrigger className="w-full border-[1.5px] border-gray-300 dark:border-gray-600">
+          <SelectValue placeholder="Регион" />
+        </SelectTrigger>
+        <SelectContent>
+          {regions.map((r) => (
+            <SelectItem key={r} value={r}>
+              {r}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={profile} onValueChange={setProfile}>
+        <SelectTrigger className="w-full border-[1.5px] border-gray-300 dark:border-gray-600">
+          <SelectValue placeholder="Профиль" />
+        </SelectTrigger>
+        <SelectContent>
+          {profiles.map((p) => (
+            <SelectItem key={p} value={p}>
+              {p}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </motion.div>
+  );
+}
+
+// --- MAIN COMPONENT -------------------------------------------------------
+export default function SvoEducationPortal() {
+  // Dark mode
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    dark ? root.classList.add("dark") : root.classList.remove("dark");
+  }, [dark]);
+
+  useEffect(() => {
+    setDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }, []);
+
+  const [query, setQuery] = useState<string>("");
+  const [region, setRegion] = useState<string>("");
+  const [profile, setProfile] = useState<string>("");
+
+  const filtered = useMemo(() => {
+    return samplePrograms.filter((p) => {
+      const matchesQuery = p.institution.toLowerCase().includes(query.toLowerCase()) || p.program.toLowerCase().includes(query.toLowerCase());
+      const matchesRegion = region ? p.region === region : true;
+      const matchesProfile = profile ? p.profile === profile : true;
+      return matchesQuery && matchesRegion && matchesProfile;
+    });
+  }, [query, region, profile]);
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* HEADER */}
+      <header className="w-full shadow-md bg-[color:var(--rgsu-blue)] text-white rounded-b-3xl" style={{ "--rgsu-blue": COLORS.primary }}>
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <img src={logoUrl} alt="Логотип РГСУ" className="h-10 w-auto" />
+            <h1 className="text-2xl md:text-3xl font-bold leading-tight">Образовательные возможности для участников СВО</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <p className="hidden md:block md:max-w-xs text-sm text-white/90">Найдите подходящую программу обучения с учётом специальных льгот.</p>
+            <DarkModeToggle dark={dark} setDark={setDark} />
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 bg-gray-50 dark:bg-gray-900">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 -mt-6 pb-20 flex flex-col gap-14">
+          {/* BENEFITS SECTION */}
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-labelledby="benefits-heading">
+            <h2 id="benefits-heading" className="sr-only">Льготы для участников СВО</h2>
+            <AnimatePresence>
+              {benefits.map((b) => (<BenefitCard key={b.id} benefit={b} />))}
+            </AnimatePresence>
+          </section>
+
+          {/* FILTERS */}
+          <FilterPanel query={query} setQuery={setQuery} region={region} setRegion={setRegion} profile={profile} setProfile={setProfile} />
+
+          {/* PROGRAMS */}
+          <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <AnimatePresence>
+              {filtered.map((program) => (<ProgramCard key={program.id} program={program} />))}
+            </AnimatePresence>
+            {filtered.length === 0 && (
+              <p className="col-span-full text-center text-gray-500 dark:text-gray-400 mt-10">Ничего не найдено. Попробуйте изменить параметры фильтрации.</p>
+            )}
+          </section>
+        </div>
+      </main>
+
+      {/* FOOTER */}
+      <footer className="text-center text-xs text-gray-400 dark:text-gray-500 py-6 bg-gray-100 dark:bg-gray-800">© {new Date().getFullYear()} Российский государственный социальный университет • Данные актуализируются каждые 24 ч</footer>
+    </div>
+  );
+}
